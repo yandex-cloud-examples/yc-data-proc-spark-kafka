@@ -1,14 +1,14 @@
-# Infrastructure for setting up integration between the Data Proc and Managed Service for Apache Kafka® clusters
+# Infrastructure for setting up integration between the Yandex Data Processing and Managed Service for Apache Kafka® clusters
 #
 # RU: https://yandex.cloud/ru/docs/data-proc/tutorials/kafka
 # EN: https://yandex.cloud/en/docs/data-proc/tutorials/kafka
 #
-# Set the configuration of the Data Proc and Managed Service for Apache Kafka® clusters
+# Set the configuration of the Yandex Data Processing and Managed Service for Apache Kafka® clusters
 
 # Specify the following settings:
 locals {
   folder_id  = "" # Your cloud folder ID, the same as for your provider
-  dp_ssh_key = "" # Аbsolute path to an SSH public key for the Data Proc cluster
+  dp_ssh_key = "" # Аbsolute path to an SSH public key for the Yandex Data Processing cluster
 
   # The following settings are predefined. Change them only if necessary.
   network_name          = "dataproc-network" # Name of the network
@@ -16,7 +16,7 @@ locals {
   subnet_name           = "dataproc-subnet-b" # Name of the subnet
   sa_name               = "dataproc-sa" # Name of the service account
   bucket_name           = "dataproc-bucket-8097865" # Name of the Object Storage bucket
-  dataproc_cluster_name = "dataproc-cluster" # Name of the Data Proc cluster
+  dataproc_cluster_name = "dataproc-cluster" # Name of the Yandex Data Processing cluster
   kafka_cluster_name    = "dataproc-kafka" # Name of the Managed Service for Apache Kafka® cluster
   kafka_username        = "user1" # Apache Kafka® username.
   kafka_password        = "password1" # Password of the Apache Kafka® user.
@@ -24,17 +24,17 @@ locals {
 }
 
 resource "yandex_vpc_network" "dataproc_network" {
-  description = "Network for Data Proc and Managed Service for Apache Kafka®"
+  description = "Network for Yandex Data Processing and Managed Service for Apache Kafka®"
   name        = local.network_name
 }
 
-# NAT gateway for Data Proc
+# NAT gateway for Yandex Data Processing
 resource "yandex_vpc_gateway" "dataproc_nat" {
   name = local.nat_name
   shared_egress_gateway {}
 }
 
-# Routing table for Data Proc
+# Routing table for Yandex Data Processing
 resource "yandex_vpc_route_table" "dataproc_rt" {
   network_id = yandex_vpc_network.dataproc_network.id
 
@@ -45,7 +45,7 @@ resource "yandex_vpc_route_table" "dataproc_rt" {
 }
 
 resource "yandex_vpc_subnet" "dataproc_subnet_b" {
-  description    = "Subnet for Data Proc and Managed Service for Apache Kafka®"
+  description    = "Subnet for Yandex Data Processing and Managed Service for Apache Kafka®"
   name           = local.subnet_name
   zone           = "ru-central1-b"
   network_id     = yandex_vpc_network.dataproc_network.id
@@ -54,7 +54,7 @@ resource "yandex_vpc_subnet" "dataproc_subnet_b" {
 }
 
 resource "yandex_vpc_security_group" "dataproc_security_group" {
-  description = "Security group for the Data Proc and Managed Service for Apache Kafka® clusters"
+  description = "Security group for the Yandex Data Processing and Managed Service for Apache Kafka® clusters"
   network_id  = yandex_vpc_network.dataproc_network.id
 
   ingress {
@@ -96,25 +96,25 @@ resource "yandex_vpc_security_group" "dataproc_security_group" {
 }
 
 resource "yandex_iam_service_account" "dataproc_sa" {
-  description = "Service account to manage the Data Proc cluster"
+  description = "Service account to manage the Yandex Data Processing cluster"
   name        = local.sa_name
 }
 
-# Assign the storage.admin role to the Data Proc service account
+# Assign the storage.admin role to the Yandex Data Processing service account
 resource "yandex_resourcemanager_folder_iam_binding" "storage_admin" {
   folder_id = local.folder_id
   role      = "storage.admin"
   members   = ["serviceAccount:${yandex_iam_service_account.dataproc_sa.id}"]
 }
 
-# Assign the dataproc.agent role to the Data Proc service account
+# Assign the dataproc.agent role to the Yandex Data Processing service account
 resource "yandex_resourcemanager_folder_iam_binding" "dataproc_agent" {
   folder_id = local.folder_id
   role      = "dataproc.agent"
   members   = ["serviceAccount:${yandex_iam_service_account.dataproc_sa.id}"]
 }
 
-# Assign the storage.uploader role to the Data Proc service account
+# Assign the storage.uploader role to the Yandex Data Processing service account
 resource "yandex_resourcemanager_folder_iam_binding" "dataproc_user" {
   folder_id = local.folder_id
   role      = "dataproc.user"
@@ -140,7 +140,7 @@ resource "yandex_storage_bucket" "dataproc_bucket" {
 }
 
 resource "yandex_dataproc_cluster" "dataproc_cluster" {
-  description        = "Data Proc cluster"
+  description        = "Yandex Data Processing cluster"
   depends_on         = [yandex_resourcemanager_folder_iam_binding.storage_admin, yandex_resourcemanager_folder_iam_binding.dataproc_agent, yandex_resourcemanager_folder_iam_binding.dataproc_user]
   bucket             = yandex_storage_bucket.dataproc_bucket.id
   security_group_ids = [yandex_vpc_security_group.dataproc_security_group.id]
