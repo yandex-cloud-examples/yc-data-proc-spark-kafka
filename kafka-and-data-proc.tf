@@ -100,10 +100,10 @@ resource "yandex_iam_service_account" "dataproc_sa" {
   name        = local.sa_name
 }
 
-# Assign the storage.admin role to the Yandex Data Processing service account
-resource "yandex_resourcemanager_folder_iam_binding" "storage_admin" {
+# Assign the storage.editor role to the Yandex Data Processing service account
+resource "yandex_resourcemanager_folder_iam_binding" "storage_editor" {
   folder_id = local.folder_id
-  role      = "storage.admin"
+  role      = "storage.editor"
   members   = ["serviceAccount:${yandex_iam_service_account.dataproc_sa.id}"]
 }
 
@@ -114,10 +114,10 @@ resource "yandex_resourcemanager_folder_iam_binding" "dataproc_agent" {
   members   = ["serviceAccount:${yandex_iam_service_account.dataproc_sa.id}"]
 }
 
-# Assign the storage.uploader role to the Yandex Data Processing service account
-resource "yandex_resourcemanager_folder_iam_binding" "dataproc_user" {
+# Assign the dataproc.provisioner role to the Yandex Data Processing service account
+resource "yandex_resourcemanager_folder_iam_binding" "dataproc_provisioner" {
   folder_id = local.folder_id
-  role      = "dataproc.user"
+  role      = "dataproc.provisioner"
   members   = ["serviceAccount:${yandex_iam_service_account.dataproc_sa.id}"]
 }
 
@@ -126,17 +126,15 @@ resource "yandex_iam_service_account_static_access_key" "sa_static_key" {
   service_account_id = yandex_iam_service_account.dataproc_sa.id
 }
 
-# Use the key to create a bucket and provide the service account with full control over the bucket
+# Use the key to create a bucket
 resource "yandex_storage_bucket" "dataproc_bucket" {
   access_key = yandex_iam_service_account_static_access_key.sa_static_key.access_key
   secret_key = yandex_iam_service_account_static_access_key.sa_static_key.secret_key
   bucket     = local.bucket_name
 
-  grant {
-    id = yandex_iam_service_account.dataproc_sa.id
-    type        = "CanonicalUser"
-    permissions = ["FULL_CONTROL"]
-  }
+  depends_on = [
+    yandex_resourcemanager_folder_iam_binding.storage_editor
+  ]
 }
 
 resource "yandex_dataproc_cluster" "dataproc_cluster" {
@@ -149,12 +147,17 @@ resource "yandex_dataproc_cluster" "dataproc_cluster" {
   zone_id            = "ru-central1-b"
   ui_proxy           = true
 
+  depends_on = [
+    yandex_resourcemanager_folder_iam_binding.dataproc-provisioner,
+    yandex_resourcemanager_folder_iam_binding.dataproc-agent
+  ]
+
   cluster_config {
     version_id = "2.1"
 
     hadoop {
       services        = ["HDFS", "LIVY", "SPARK", "TEZ", "YARN"]
-      ssh_public_keys = [file(local.dp_ssh_key)]
+      ssh_public_keys = ["${file(local.dp_ssh_key)}"]
     }
 
     subcluster_spec {
