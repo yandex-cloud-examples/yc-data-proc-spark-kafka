@@ -15,6 +15,7 @@ locals {
   nat_name              = "dataproc-nat" # Name of the NAT gateway
   subnet_name           = "dataproc-subnet-b" # Name of the subnet
   sa_name               = "dataproc-sa" # Name of the service account
+  sa_bucket             = "bucket-da" # Name of the service account for managing the Object Storage bucket 
   bucket_name           = "dataproc-bucket-8097865" # Name of the Object Storage bucket
   dataproc_cluster_name = "dataproc-cluster" # Name of the Yandex Data Processing cluster
   kafka_cluster_name    = "dataproc-kafka" # Name of the Managed Service for Apache Kafka® cluster
@@ -100,11 +101,16 @@ resource "yandex_iam_service_account" "dataproc_sa" {
   name        = local.sa_name
 }
 
-# Assign the storage.editor role to the Yandex Data Processing service account
-resource "yandex_resourcemanager_folder_iam_binding" "storage_editor" {
+resource "yandex_iam_service_account" "bucket_sa" {
+  description = "Service account to manage the Object Storage bucket"
+  name        = local.sa_bucket
+}
+
+# Assign the storage.admin role to the Object Storage service account
+resource "yandex_resourcemanager_folder_iam_binding" "storage_admin" {
   folder_id = local.folder_id
-  role      = "storage.editor"
-  members   = ["serviceAccount:${yandex_iam_service_account.dataproc_sa.id}"]
+  role      = "storage.admin"
+  members   = ["serviceAccount:${yandex_iam_service_account.bucket_sa.id}"]
 }
 
 # Assign the dataproc.agent role to the Yandex Data Processing service account
@@ -123,7 +129,7 @@ resource "yandex_resourcemanager_folder_iam_binding" "dataproc_provisioner" {
 
 resource "yandex_iam_service_account_static_access_key" "sa_static_key" {
   description        = "Static access key for Object Storage"
-  service_account_id = yandex_iam_service_account.dataproc_sa.id
+  service_account_id = yandex_iam_service_account.bucket_sa.id
 }
 
 # Use the key to create a bucket
@@ -133,8 +139,14 @@ resource "yandex_storage_bucket" "dataproc_bucket" {
   bucket     = local.bucket_name
 
   depends_on = [
-    yandex_resourcemanager_folder_iam_binding.storage_editor
+    yandex_resourcemanager_folder_iam_binding.storage_admin
   ]
+
+  grant {
+    id          = yandex_iam_service_account.dataproc_sa.id
+    type        = "CanonicalUser"
+    permissions = ["READ","WRITE"]
+  }
 }
 
 resource "yandex_dataproc_cluster" "dataproc_cluster" {
