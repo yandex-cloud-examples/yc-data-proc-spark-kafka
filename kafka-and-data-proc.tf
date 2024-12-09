@@ -15,7 +15,7 @@ locals {
   nat_name              = "dataproc-nat" # Name of the NAT gateway
   subnet_name           = "dataproc-subnet-b" # Name of the subnet
   sa_name               = "dataproc-sa" # Name of the service account
-  sa_bucket             = "bucket-da" # Name of the service account for managing the Object Storage bucket 
+  sa_bucket             = "bucket-sa" # Name of the service account for managing the Object Storage bucket 
   bucket_name           = "dataproc-bucket-8097865" # Name of the Object Storage bucket
   dataproc_cluster_name = "dataproc-cluster" # Name of the Yandex Data Processing cluster
   kafka_cluster_name    = "dataproc-kafka" # Name of the Managed Service for Apache Kafka® cluster
@@ -151,18 +151,13 @@ resource "yandex_storage_bucket" "dataproc_bucket" {
 
 resource "yandex_dataproc_cluster" "dataproc_cluster" {
   description        = "Yandex Data Processing cluster"
-  depends_on         = [yandex_resourcemanager_folder_iam_binding.storage_admin, yandex_resourcemanager_folder_iam_binding.dataproc_agent, yandex_resourcemanager_folder_iam_binding.dataproc_user]
+  depends_on         = [yandex_resourcemanager_folder_iam_binding.dataproc_agent, yandex_resourcemanager_folder_iam_binding.dataproc_provisioner]
   bucket             = yandex_storage_bucket.dataproc_bucket.id
   security_group_ids = [yandex_vpc_security_group.dataproc_security_group.id]
   name               = local.dataproc_cluster_name
   service_account_id = yandex_iam_service_account.dataproc_sa.id
   zone_id            = "ru-central1-b"
   ui_proxy           = true
-
-  depends_on = [
-    yandex_resourcemanager_folder_iam_binding.dataproc-provisioner,
-    yandex_resourcemanager_folder_iam_binding.dataproc-agent
-  ]
 
   cluster_config {
     version_id = "2.1"
@@ -239,6 +234,21 @@ resource "yandex_mdb_kafka_user" "kafka_user" {
   cluster_id = yandex_mdb_kafka_cluster.kafka_cluster.id
   name       = local.kafka_username
   password   = local.kafka_password
+
+  permission {
+    topic_name = "*"
+    role       = "ACCESS_ROLE_CONSUMER"
+  }
+
+  permission {
+    topic_name = "*"
+    role       = "ACCESS_ROLE_PRODUCER"
+  }
+
+  permission {
+    topic_name = "*"
+    role       = "ACCESS_ROLE_ADMIN"
+  }
 }
 
 # Apache Kafka® topic
