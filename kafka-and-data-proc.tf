@@ -151,6 +151,7 @@ resource "yandex_storage_bucket" "dataproc_bucket" {
 
 resource "yandex_dataproc_cluster" "dataproc_cluster" {
   description        = "Yandex Data Processing cluster"
+  environment        = "PRODUCTION"
   depends_on         = [yandex_resourcemanager_folder_iam_binding.dataproc_agent, yandex_resourcemanager_folder_iam_binding.dataproc_provisioner]
   bucket             = yandex_storage_bucket.dataproc_bucket.id
   security_group_ids = [yandex_vpc_security_group.dataproc_security_group.id]
