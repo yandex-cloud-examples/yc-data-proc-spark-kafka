@@ -143,6 +143,7 @@ resource "yandex_storage_bucket" "dataproc_bucket" {
   ]
 }
 
+# Grant permissions to the service account in order to read from the bucket and write to it
 resource "yandex_storage_bucket_grant" "dataproc_bucket_grant" {
   bucket     = yandex_storage_bucket.dataproc_bucket.bucket
   access_key = yandex_iam_service_account_static_access_key.sa_static_key.access_key
