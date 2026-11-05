@@ -221,7 +221,7 @@ resource "yandex_mdb_kafka_cluster" "kafka_cluster" {
 
   config {
     brokers_count    = 1
-    version          = "3.5"
+    version          = "3.7"
     kafka {
       resources {
         disk_size          = 10 # GB
